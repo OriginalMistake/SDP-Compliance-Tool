@@ -8,6 +8,9 @@ import streamlit as st
 import streamlit.components.v1 as components
 from msal_streamlit_authentication import msal_authentication
 
+# import environment configs
+import config
+
 # page config
 st.set_page_config(
     page_title="Device Compliance Tool", layout="wide", page_icon="💻"
@@ -29,14 +32,6 @@ st.markdown(
     "<h1 style='text-align: center;'>Device Compliance Tool</h1>",
     unsafe_allow_html=True,
 )
-
-# --- MODIFY THIS ---
-# replace with authorised admin usernames/emails for your organisation
-ADMIN_USERS = [
-    "admin1@yourdomain.com",
-    "admin2@yourdomain.com",
-    "itsupport@yourdomain.com"
-]
 
 banner_spot = st.empty()
 login_spot = st.empty()
@@ -149,24 +144,7 @@ def clean_and_get_int(value):
     digits = re.findall(r"\d+", val_str)
     return int(digits[0]) if digits else 0
 
-def get_site_from_pc(pc_name):
-    """determine SDP site based on machine name prefix/naming convention"""
-    pc_upper = str(pc_name).strip().upper()
-
-    # --- MODIFY THIS ---
-    # customise these prefixes to match your organisational site naming rules
-    if pc_upper.startswith("NY"):
-        return "New York HQ"
-    elif pc_upper.startswith("LON"):
-        return "London Office"
-    elif pc_upper.startswith("SYD"):
-        return "Sydney Office"
-    else:
-        return "All Sites"
-
-
 # SDP OAUTH
-
 def get_access_token():
     """exchange the refresh token for a live 1-hour access token."""
     url = f"{st.secrets['sdp']['accounts_url']}/oauth/v2/token"
@@ -193,14 +171,7 @@ def get_asset_details(pc_name, access_token):
     raw_pc = str(pc_name).strip()
     base_pc = raw_pc.split(".")[0]
 
-    # --- MODIFY THIS ---
-    # adjust domain suffix formatting candidates according to your Active Directory domain
-    search_candidates = [
-        f"{base_pc.upper()}.yourdomain.com",
-        f"{base_pc.lower()}.yourdomain.com",
-        base_pc.upper(),
-        base_pc.lower(),
-    ]
+    search_candidates = config.get_search_candidates(base_pc)
 
     endpoints = [
         f"{st.secrets['sdp']['api_domain']}/api/v3/assets",
@@ -258,8 +229,6 @@ def search_existing_ticket(pc_name, access_token):
     }
 
     base_pc = str(pc_name).split(".")[0].strip().upper()
-    
-    # matching the subject prefix used in create_sdp_ticket
     expected_subject = f"IT Action Required: Compliance Check for {base_pc}"
 
     input_data = {
@@ -312,7 +281,7 @@ def create_sdp_ticket(
         "Accept": "application/vnd.manageengine.sdp.v3+json",
     }
 
-    site_name = get_site_from_pc(pc_name)
+    site_name = config.get_site_from_pc(pc_name)
     subject = f"IT Action Required: Compliance Check for {pc_name}"
 
     raw_description = description_template.format(
@@ -326,20 +295,18 @@ def create_sdp_ticket(
 
     sdp_description = raw_description.replace("\n", "<br>")
 
-    # --- MODIFY THIS ---
-    # adjust default payload categories/types to match your SDP setup
     payload = {
         "request": {
             "subject": subject,
             "description": sdp_description,
-            "requester": {"email_id": "itsupport@yourdomain.com"},
-            "category": {"name": "Compliance Checks"},
-            "request_type": {"name": "Support"},
+            "requester": {"email_id": config.SDP_REQUESTER_EMAIL},
+            "category": {"name": config.SDP_CATEGORY},
+            "request_type": {"name": config.SDP_REQUEST_TYPE},
             "site": {"name": site_name},
-            "mode": {"name": "Web form"},
-            "impact": {"name": "Affects User"},
-            "urgency": {"name": "Medium"},
-            "priority": {"name": "Medium"},
+            "mode": {"name": config.SDP_MODE},
+            "impact": {"name": config.SDP_IMPACT},
+            "urgency": {"name": config.SDP_URGENCY},
+            "priority": {"name": config.SDP_PRIORITY},
         }
     }
 
@@ -402,17 +369,15 @@ with col2:
 
 if updates_file and mcm_file:
     try:
-        # --- MODIFY THIS ---
-        # process updates.csv (skip 11 header rows) - modify based on the rows you have blank at the top
-        df_updates_raw = pd.read_csv(updates_file, skiprows=11, header=None)
+        # process updates.csv using config skiprows
+        df_updates_raw = pd.read_csv(updates_file, skiprows=config.UPDATES_SKIPROWS, header=None)
         num_cols_updates = df_updates_raw.shape[1]
         df_updates_raw.columns = [
             f"H{i}" for i in range(1, num_cols_updates + 1)
         ]
 
-        # --- MODIFY THIS ---
-        # process MCM.csv (skip 3 header rows) - modify based on the rows you have blank at the top
-        df_mcm_raw = pd.read_csv(mcm_file, skiprows=3, header=None)
+        # process MCM.csv using config skiprows
+        df_mcm_raw = pd.read_csv(mcm_file, skiprows=config.MCM_SKIPROWS, header=None)
         num_cols_mcm = df_mcm_raw.shape[1]
         df_mcm_raw.columns = [f"H{i}" for i in range(1, num_cols_mcm + 1)]
 
@@ -420,20 +385,16 @@ if updates_file and mcm_file:
         merged_results = {}
 
         for _, row in df_updates_raw.iterrows():
-            # --- MODIFY THIS ---
-            # modify the PC Name column here (H1 = Column A)
-            pc_name = str(row.get("H1", "")).strip().upper()
+            pc_name = str(row.get(config.UPDATES_PC_NAME_COL, "")).strip().upper()
             if (
                 pc_name
                 and pc_name != "NAN"
                 and "COMPUTER" not in pc_name
                 and "DEVICE" not in pc_name
             ):
-                # --- MODIFY THIS ---
-                # modify the Missing Updates column here (H10 = Column J)
-                updates_count = clean_and_get_int(row.get("H10"))
+                updates_count = clean_and_get_int(row.get(config.UPDATES_COUNT_COL))
 
-                if updates_count >= 1:
+                if updates_count >= config.MIN_MISSING_UPDATES:
                     if pc_name not in merged_results:
                         merged_results[pc_name] = {
                             "PCName": pc_name,
@@ -443,19 +404,15 @@ if updates_file and mcm_file:
                     merged_results[pc_name]["Updates"] = updates_count
 
         for _, row in df_mcm_raw.iterrows():
-            # --- MODIFY THIS ---
-            # modify the PC Name column here (H1 = Column A)
-            pc_name = str(row.get("H1", "")).strip().upper()
+            pc_name = str(row.get(config.MCM_PC_NAME_COL, "")).strip().upper()
             if (
                 pc_name
                 and pc_name != "NAN"
                 and "COMPUTER" not in pc_name
                 and "DEVICE" not in pc_name
             ):
-                # --- MODIFY THIS ---
-                # modify the MCM Scan Days column here (H6 = Column F)
-                scan_days = clean_and_get_int(row.get("H6"))
-                if scan_days >= 14:
+                scan_days = clean_and_get_int(row.get(config.MCM_SCAN_DAYS_COL))
+                if scan_days >= config.MIN_INACTIVE_DAYS:
                     if pc_name not in merged_results:
                         merged_results[pc_name] = {
                             "PCName": pc_name,
@@ -522,16 +479,7 @@ if updates_file and mcm_file:
 
             # ticket exists -> append note
             if existing_ticket_id:
-                # --- MODIFY THIS ---
-                # customise the template you'd like for the note append - do not adjust the parts within '{}'
-                # you can modify the 0 part (keep within '#')
-                note_text = (
-                    f"<b>Automated Compliance Check Update</b><br><br>"
-                    f"Compliance Findings:<br>"
-                    f"- Missing Critical Updates: {updates if updates != '' else '0'}<br>"
-                    f"- Days since last check-in: {mcm_scan if mcm_scan != '' else '0'}<br><br>"
-                    f"SDP Asset Status: <b>{asset_state}</b> | Assigned User: <b>{assigned_user}</b>"
-                )
+                note_text = config.get_note_template(updates, mcm_scan, asset_state, assigned_user)
                 note_success = add_note_to_ticket(existing_ticket_id, note_text, access_token)
                 if note_success:
                     return {
@@ -577,33 +525,18 @@ if updates_file and mcm_file:
                         "log": f"ERROR: **{pc}** - {str(err)}",
                     }
 
-        # define default template text
-        # --- MODIFY THIS ---
-        # customise the template you'd like for the ticket creation - do not adjust the parts within '{}' or the '\n' (these start a new line)
-        default_template = (
-            "This is an automated notification regarding {PCName}.\n\n"
-            "Compliance Findings:\n"
-            "- Missing Critical Updates: {Updates}\n"
-            "- Days since last check-in: {MCMScan}\n\n"
-            "Please connect to the network as soon as possible to receive outstanding updates.\n\n"
-            "SDP Asset Register Info:\n"
-            "- Assigned Site: {Site}\n"
-            "- Asset State: {AssetState}\n"
-            "- Assigned User: {AssignedUser}"
-        )
-
         # admin check for template editing
-        if user_email.lower() in [email.lower() for email in ADMIN_USERS]:
+        if user_email.lower() in [email.lower() for email in config.ADMIN_USERS]:
             ticket_template = st.text_area(
                 "Configure Ticket Description Template",
-                value=default_template,
+                value=config.DEFAULT_TICKET_TEMPLATE,
                 height=240,
             )
         else:
-            ticket_template = default_template
+            ticket_template = config.DEFAULT_TICKET_TEMPLATE
             with st.expander("View Ticket Description Template (Read-Only)"):
                 st.caption("Only system administrators can edit this template.")
-                st.code(default_template, language="text")
+                st.code(config.DEFAULT_TICKET_TEMPLATE, language="text")
 
         # action buttons layout
         btn_col1, btn_col2 = st.columns([2, 1])
@@ -651,8 +584,8 @@ if updates_file and mcm_file:
 
                 # show visual feedback while parallel execution runs
                 with st.spinner("Dispatching tickets to ServiceDesk... Please wait."):
-                    # process machines in parallel threads (5 concurrent requests)
-                    with ThreadPoolExecutor(max_workers=5) as executor:
+                    # process machines in parallel threads
+                    with ThreadPoolExecutor(max_workers=config.MAX_WORKERS) as executor:
                         futures = [
                             executor.submit(process_single_pc, row_tuple, access_token, ticket_template)
                             for row_tuple in final_df.iterrows()
