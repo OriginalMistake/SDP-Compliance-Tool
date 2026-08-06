@@ -13,8 +13,10 @@ Built with **Python**, **Streamlit**, and concurrent batch processing (`ThreadPo
 
 ## 📁 Repository Structure
 
-* `app.py` - Core Streamlit interface, CSV parsing logic and SDP API dispatch handlers. **DO NOT EDIT THIS**
-* `config.py` - Central configuration file for site mappings, CSV header offsets, admin RBAC lists and SDP ticket templates. **CUSTOMISATIONS ARE DONE HERE**
+* `app.py` - Core Streamlit interface, CSV parsing logic and SDP API dispatch handlers.
+* `config.py` - Central configuration file for site mappings, CSV header offsets, admin RBAC lists and SDP ticket templates.
+
+*Customisations are done within `config.py`*
 
 ---
 
@@ -30,12 +32,17 @@ Built with **Python**, **Streamlit**, and concurrent batch processing (`ThreadPo
 
 ## 🖼️ Interface Preview
 
-### 1. Upload & Merged Review
-Upload raw CSV exports to correlate missing updates and MCM scan activity into a unified review table.
+### 1. Upload CSVs
+Upload raw CSV exports to correlate missing updates and MCM scan activity.
+
+![Upload CSVs](images/upload-view.png)
+
+### 2. Merged Review
+Interactive review table of the merged results.
 
 ![Merged Results Table](images/merged-table-view.png)
 
-### 2. Concurrent Dispatch & Audit
+### 3. Concurrent Dispatch & Audit
 Monitor real-time ticket creation with progress indicators and emergency stop protection.
 
 ![Dispatch System](images/dispatch-tickets-view.png)
@@ -51,19 +58,19 @@ Monitor real-time ticket creation with progress indicators and emergency stop pr
 
 ### 1. Clone Repository
 ```bash
-git clone [https://github.com/OriginalMistake/mcm-sdp-compliance-tool.git](https://github.com/OriginalMistake/mcm-sdp-compliance-tool.git)
+git clone https://github.com/OriginalMistake/mcm-sdp-compliance-tool.git
 cd mcm-sdp-compliance-tool
 ```
 
 ### 2. Create Virtual Environment & Install Dependencies
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows use: venv\Scripts\activate
+source venv/bin/activate  # on Windows use: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
 ### 3. Configure Secrets (`.streamlit/secrets.toml`)
-Configure your local secrets file or Streamlit Cloud Secrets manager:
+Configure your local secrets file *(or Streamlit Cloud Secrets manager)*:
 
 ```toml
 [azure_sso]
@@ -87,7 +94,7 @@ streamlit run app.py
 
 ## 🛠️ Personalising for Your Organisation (`config.py`)
 
-All site-specific settings, thresholds, and mappings are centralized in `config.py` to allow clean updates to core logic in `app.py`:
+All site-specific settings, thresholds and mappings are centralised in `config.py` to allow clean updates to core logic in `app.py`:
 
 ### 1. Adjusting Compliance Thresholds
 Update default filtering logic to match your IT security policies:
@@ -108,6 +115,8 @@ Customise site routing and default ticket content:
 ### 4. Parallel Worker Limits
 `MAX_WORKERS = 5` - Defaults to 5 concurrent threads to balance speed with SDP rate limits. Adjust based on your API server capacity.
 
+*Please note there are comments in the `config.py` to assist you with customising the app to your needs.*
+
 ---
 
 ## ⚙️ Logic Flow
@@ -120,14 +129,14 @@ Customise site routing and default ticket content:
 
 1. **Upload & Parsing:** Raw CSVs drop into designated slots, automatically stripping metadata headers based on offset rules in `config.py`.
 2. **Key Matching:** Normalises hostnames (uppercase, strips domain suffixes) to cross-reference data.
-3. **Threshold Check:** Flags devices with 1 or more missing updates OR 14 or more days inactive.
+3. **Threshold Check:** Flags devices with 1 or more missing updates OR 14 or more days inactive. *Based on default*
 4. **Execution:** Submits concurrent API payload requests to SDP to fetch open tickets or create new ones.
 
 ---
 
 ## 💬 Issues & Support
 
-If you encounter a bug, have a feature request, or run into issues with report formatting:
+If you encounter a bug, have a feature request or run into issues with report formatting:
 
 1. **Check existing issues:** Search the GitHub Issues tab to see if it has already been reported.
 2. **Open a new issue:** Provide details about expected vs. actual behavior, along with relevant error logs (ensuring no sensitive data or credentials are included).
