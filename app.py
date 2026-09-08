@@ -6,7 +6,6 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import re
-from datetime import datetime
 import pandas as pd
 import requests
 import streamlit as st
@@ -18,7 +17,7 @@ import config
 
 # page config
 st.set_page_config(
-    page_title="Device Compliance Tool", layout="wide", page_icon="💻"
+    page_title="ServiceDesk Plus Compliance Automation Tool", layout="wide", page_icon="💻"
 )
 
 # azure SSO secrets check
@@ -34,7 +33,7 @@ except Exception:
 
 # title
 st.markdown(
-    "<h1 style='text-align: center;'>Device Compliance Tool</h1>",
+    "<h1 style='text-align: center;'>ServiceDesk Plus Compliance Automation Tool</h1>",
     unsafe_allow_html=True,
 )
 
@@ -235,7 +234,7 @@ def search_existing_ticket(pc_name, access_token):
 
     base_pc = str(pc_name).split(".")[0].strip().upper()
     # modify the ticket subject here
-    # ensure you apply the exact same to line 287 as well (under 'ticket creation logic' section)
+    # ensure you apply the exact same to line ~293 as well (under 'ticket creation logic' section)
     expected_subject = f"IT Action Required: Compliance Check for {base_pc}"
 
     input_data = {
@@ -274,7 +273,7 @@ def search_existing_ticket(pc_name, access_token):
 def create_sdp_ticket(
     pc_name,
     updates,
-    mcm_scan,
+    device_scan,
     asset_state,
     assigned_user,
     description_template,
@@ -296,7 +295,7 @@ def create_sdp_ticket(
     raw_description = description_template.format(
         PCName=pc_name,
         Updates=updates if updates != "" else "0",
-        MCMScan=mcm_scan if mcm_scan != "" else "0",
+        DeviceScan=device_scan if device_scan != "" else "0",
         AssetState=asset_state,
         AssignedUser=assigned_user,
         Site=site_name,
@@ -372,12 +371,12 @@ with col1:
     )
 
 with col2:
-    st.subheader("2. MCM Last Scan Report")
-    mcm_file = st.file_uploader(
-        "Upload 'MCM Last Scan Time.csv'", type=["csv"]
+    st.subheader("2. Endpoint Scan Report")
+    scan_file = st.file_uploader(
+        "Upload 'Endpoint Last Scan Report.csv'", type=["csv"]
     )
 
-if updates_file and mcm_file:
+if updates_file and scan_file:
     try:
         # process updates.csv using config skiprows
         df_updates_raw = pd.read_csv(updates_file, skiprows=config.UPDATES_SKIPROWS, header=None)
@@ -386,10 +385,10 @@ if updates_file and mcm_file:
             f"H{i}" for i in range(1, num_cols_updates + 1)
         ]
 
-        # process MCM.csv using config skiprows
-        df_mcm_raw = pd.read_csv(mcm_file, skiprows=config.MCM_SKIPROWS, header=None)
-        num_cols_mcm = df_mcm_raw.shape[1]
-        df_mcm_raw.columns = [f"H{i}" for i in range(1, num_cols_mcm + 1)]
+        # process scan report using config skiprows
+        df_scan_raw = pd.read_csv(scan_file, skiprows=config.SCAN_REPORT_SKIPROWS, header=None)
+        num_cols_scan = df_scan_raw.shape[1]
+        df_scan_raw.columns = [f"H{i}" for i in range(1, num_cols_scan + 1)]
 
         # merge & filter logic
         merged_results = {}
@@ -409,27 +408,27 @@ if updates_file and mcm_file:
                         merged_results[pc_name] = {
                             "PCName": pc_name,
                             "Updates": "",
-                            "MCMScan": "",
+                            "DeviceScan": "",
                         }
                     merged_results[pc_name]["Updates"] = updates_count
 
-        for _, row in df_mcm_raw.iterrows():
-            pc_name = str(row.get(config.MCM_PC_NAME_COL, "")).strip().upper()
+        for _, row in df_scan_raw.iterrows():
+            pc_name = str(row.get(config.SCAN_PC_NAME_COL, "")).strip().upper()
             if (
                 pc_name
                 and pc_name != "NAN"
                 and "COMPUTER" not in pc_name
                 and "DEVICE" not in pc_name
             ):
-                scan_days = clean_and_get_int(row.get(config.MCM_SCAN_DAYS_COL))
+                scan_days = clean_and_get_int(row.get(config.SCAN_DAYS_COL))
                 if scan_days >= config.MIN_INACTIVE_DAYS:
                     if pc_name not in merged_results:
                         merged_results[pc_name] = {
                             "PCName": pc_name,
                             "Updates": "",
-                            "MCMScan": "",
+                            "DeviceScan": "",
                         }
-                    merged_results[pc_name]["MCMScan"] = scan_days
+                    merged_results[pc_name]["DeviceScan"] = scan_days
 
         initial_df = pd.DataFrame(merged_results.values())
         if not initial_df.empty:
@@ -437,7 +436,7 @@ if updates_file and mcm_file:
                 drop=True
             )
         else:
-            initial_df = pd.DataFrame(columns=["PCName", "Updates", "MCMScan"])
+            initial_df = pd.DataFrame(columns=["PCName", "Updates", "DeviceScan"])
 
         # review table
         st.markdown("---")
@@ -451,7 +450,7 @@ if updates_file and mcm_file:
             initial_df,
             use_container_width=True,
             num_rows="dynamic",
-            disabled=["PCName", "Updates", "MCMScan"],
+            disabled=["PCName", "Updates", "DeviceScan"],
         )
 
         csv_output = final_df.to_csv(index=False).encode("utf-8")
@@ -479,7 +478,7 @@ if updates_file and mcm_file:
             _, row = row_tuple
             pc = row["PCName"]
             updates = row["Updates"]
-            mcm_scan = row["MCMScan"]
+            device_scan = row["DeviceScan"]
 
             # lookup asset state/user in SDP
             asset_state, assigned_user = get_asset_details(pc, access_token)
@@ -489,7 +488,7 @@ if updates_file and mcm_file:
 
             # ticket exists -> append note
             if existing_ticket_id:
-                note_text = config.get_note_template(updates, mcm_scan, asset_state, assigned_user)
+                note_text = config.get_note_template(updates, device_scan, asset_state, assigned_user)
                 note_success = add_note_to_ticket(existing_ticket_id, note_text, access_token)
                 if note_success:
                     return {
@@ -507,7 +506,7 @@ if updates_file and mcm_file:
                 # no existing ticket -> create new ticket
                 try:
                     res = create_sdp_ticket(
-                        pc, updates, mcm_scan, asset_state, assigned_user, ticket_template, access_token
+                        pc, updates, device_scan, asset_state, assigned_user, ticket_template, access_token
                     )
                     if res.status_code in [200, 201]:
                         res_data = res.json()
