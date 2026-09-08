@@ -43,10 +43,15 @@ Interactive review table of the merged results.
 
 ![Merged Results Table](images/merged-table-view.png)
 
-### 3. Concurrent Dispatch & Audit
+### 3. Concurrent Dispatch
 Monitor real-time ticket creation with progress indicators and emergency stop protection.
 
 ![Dispatch System](images/dispatch-tickets-view.png)
+
+### 4. Audit Preview
+View which machines have had a ticket created or updated.
+
+![Audit System](images/audit-view.png)
 
 ---
 
