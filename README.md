@@ -49,12 +49,26 @@ Monitor real-time ticket creation with progress indicators and emergency stop pr
 
 ---
 
-## 🚀 Quick Start & Local Setup
+## 📋 Prerequisites
 
-### Prerequisites
-* **Python 3.9+** installed on your environment.
-* Access to a **ServiceDesk Plus (SDP)** instance with API access enabled.
-* An **Azure AD / SSO App Registration** (if enforcing organisational SSO).
+* **Python:** 3.9 or higher.
+* **ManageEngine ServiceDesk Plus:** Cloud or On-Premise instance with REST API v3 access.
+* **Azure AD / SSO App Registration:** if enforcing organisational SSO.
+* **API Credentials:** SDP OAuth2/Technician Key with specified scopes mentioned in the ***SDP API Scope*** section.
+
+---
+
+## 🔬 SDP API Scope
+
+The scope you will need to provide the service account for this app is the following:
+```
+SDPOnDemand.requests.CREATE,SDPOnDemand.requests.READ,SDPOnDemand.requests.UPDATE,SDPOnDemand.assets.READ
+```
+This allows the app to check if any tickets already exist (`SDPOnDemand.requests.READ`), create new tickets (`SDPOnDemand.requests.CREATE`), update existing tickets with new information (`SDPOnDemand.requests.UPDATE`) and lastly, read the asset register on SDP for asset state/user information (`SDPOnDemand.assets.READ`).
+
+---
+
+## 🚀 Installation & Setup
 
 ### 1. Clone Repository
 ```bash
@@ -92,30 +106,30 @@ streamlit run app.py
 
 ---
 
-## 🛠️ Personalising for Your Organisation (`config.py`)
+## 🛠️ Configuration (`config.py`)
 
-All site-specific settings, thresholds and mappings are centralised in `config.py` to allow clean updates to core logic in `app.py`:
+All site-specific settings, thresholds and mappings are centralised in `config.py`.
+*Please note there are comments in the `config.py` to assist you with customising the app to your needs.*
 
 ### 1. Adjusting Compliance Thresholds
-Update default filtering logic to match your IT security policies:
+Update the default filtering logic to match your IT security policies:
 * `MIN_MISSING_UPDATES = 1` - Minimum required missing critical updates to flag.
 * `MAX_MCM_INACTIVE_DAYS = 14` - Max allowed days since last check-in.
 
 ### 2. CSV Header Skip Logic
-Adjust header row offsets based on how your MCM / WSUS reporting tools export reports:
-* `WINDOWS_UPDATE_HEADER_OFFSET = 11` - Rows skipped for Slot 1.
-* `MCM_SCAN_HEADER_OFFSET = 3` - Rows skipped for Slot 2.
+Adjust header row offsets based on how your reporting tools export reports:
+* `WINDOWS_UPDATE_HEADER_OFFSET = 11` - Rows skipped for CSV file 1.
+* `MCM_SCAN_HEADER_OFFSET = 3` - Rows skipped for CSV file 2.
 
 ### 3. SDP Ticket Template & Site Mapping
 Customise site routing and default ticket content:
 * `SITE_PREFIX_MAP` - Maps device hostname prefixes to their corresponding SDP Site IDs.
 * `ADMIN_USERS` - List of engineer email addresses granted admin access to modify templates within the app interface.
-* `TICKET_TEMPLATES` - JSON payload template sent to SDP to match your custom fields, categories, or site categorisation.
+* `TICKET_TEMPLATES` - JSON payload template sent to SDP to match your custom fields, categories or site categorisation.
 
 ### 4. Parallel Worker Limits
 `MAX_WORKERS = 5` - Defaults to 5 concurrent threads to balance speed with SDP rate limits. Adjust based on your API server capacity.
-
-*Please note there are comments in the `config.py` to assist you with customising the app to your needs.*
+*I would recommend keeping this below 10 to avoid crashes or server overloads.*
 
 ---
 
@@ -129,7 +143,7 @@ Customise site routing and default ticket content:
 
 1. **Upload & Parsing:** Raw CSVs drop into designated slots, automatically stripping metadata headers based on offset rules in `config.py`.
 2. **Key Matching:** Normalises hostnames (uppercase, strips domain suffixes) to cross-reference data.
-3. **Threshold Check:** Flags devices with 1 or more missing updates OR 14 or more days inactive. *Based on default*
+3. **Threshold Check:** Flags devices with > 1 missing updates OR > 14 days inactive. *Based on default.*
 4. **Execution:** Submits concurrent API payload requests to SDP to fetch open tickets or create new ones.
 
 ---
