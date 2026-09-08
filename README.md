@@ -50,6 +50,18 @@ Monitor real-time ticket creation with progress indicators and emergency stop pr
 
 ---
 
+## 📁 Repository Structure
+
+```
+sdp-compliance-tool/
+├── app.py              # Streamlit dashboard UI and SDP dispatch logic
+├── config.py           # app settings, site mappings and ticket templates
+├── requirements.txt    # python package dependencies
+└── README.md           # project documentation
+```
+
+---
+
 ## 📋 Prerequisites
 
 * **Python:** 3.10 or higher.
