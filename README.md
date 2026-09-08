@@ -1,4 +1,4 @@
-# 💻 MCM & ServiceDesk Plus Compliance Automation Tool
+# 💻 ServiceDesk Plus Compliance Automation Tool
 
 A secure, high-performance Streamlit web application designed to merge, clean and process device compliance reports.
 Enabling IT Support teams to automatically log or update tickets in **ServiceDesk Plus (SDP)**. 
@@ -72,8 +72,8 @@ This allows the app to check if any tickets already exist (`SDPOnDemand.requests
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/OriginalMistake/mcm-sdp-compliance-tool.git
-cd mcm-sdp-compliance-tool
+git clone https://github.com/OriginalMistake/sdp-compliance-tool.git
+cd sdp-compliance-tool
 ```
 
 ### 2. Create Virtual Environment & Install Dependencies
