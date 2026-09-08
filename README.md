@@ -34,7 +34,7 @@ This tool speeds up ticket generation while maintaining real-time audit control 
 ## 🖼️ Interface Preview
 
 ### 1. Upload CSVs
-Upload raw CSV exports (e.g., Windows Updates & Endpoint Scan reports) to correlate missing updates and check-in activity.
+Upload raw CSV exports (e.g Windows Updates & Endpoint Scan reports) to correlate missing updates and check-in activity.
 
 ![Upload CSVs](images/upload-view.png)
 
