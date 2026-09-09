@@ -73,6 +73,7 @@ sdp-compliance-tool/
 * **ManageEngine ServiceDesk Plus:** Cloud or On-Premise instance with REST API v3 access.
 * **Azure AD / SSO App Registration:** If enforcing organisational SSO.
 * **API Credentials:** SDP OAuth2 credentials with specified scopes mentioned in the ***SDP API Scope*** section.
+* **Streamlit Cloud:** This app is setup to work on Streamlit Cloud, which provides the main UI.
 
 ---
 
