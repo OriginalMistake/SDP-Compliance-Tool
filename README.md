@@ -150,7 +150,7 @@ Customise site routing and default ticket content:
 
 ---
 
-## ⚙️ Logic Flow
+## 🧠 Logic Flow
 
 ```text
 [ Raw CSV 1: Windows Updates      ] ────┐
